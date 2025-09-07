@@ -90,7 +90,7 @@ public sealed class GameEngine
 
     private void LoadGameSettings()
     {
-        Console.Write("Welcome to snap game.Loading...");
+        Console.Write("Welcome to snap game.\nLoading...\n");
         _packLimit = _loader.GetPackLimit();
         Console.WriteLine($"Number of players {_playersCount}");
         _playerDetail = _loader.LoadPlayers(_playersCount);
@@ -157,7 +157,7 @@ public sealed class GameEngine
     {
         // Randomly select a player from the playerBucket
         var random = new Random();
-        return playerBucket[random.Next(playerBucket.Count)];
+        return playerBucket[random.Next(0,playerBucket.Count)];
     }
     
     private static void CollectPile(Queue<Card> playerDeck, Stack<Card> pile)
