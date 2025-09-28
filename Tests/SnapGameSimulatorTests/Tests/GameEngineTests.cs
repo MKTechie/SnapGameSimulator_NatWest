@@ -3,8 +3,10 @@ using SnapGameSimulator.CardType;
 using SnapGameSimulator.Domain;
 using SnapGameSimulator.Domain.CardPackGenerator;
 using SnapGameSimulator.Domain.Loader;
+using SnapGameSimulator.Domain.Localization;
 using SnapGameSimulator.Domain.WinnerSelector;
 using SnapGameSimulator.Models;
+using SnapGameSimulator.Settings;
 
 namespace SnapGameSimulatorTests.Tests
 {
@@ -14,6 +16,8 @@ namespace SnapGameSimulatorTests.Tests
         private Mock<ILoader> _mockLoader;
         private Mock<IWinnerSelector> _mockWinnerSelector;
         private Mock<ICardPackGenerator<Card, Suit, Rank>> _mockCardPackGenerator;
+        private Mock<ITranslationVault> _mockTranslationVault;
+        private Mock<IUserSettings> _mockUserSettings;
         private GameEngine _gameEngine;
 
         [TestInitialize]
@@ -22,12 +26,16 @@ namespace SnapGameSimulatorTests.Tests
             _mockLoader = new Mock<ILoader>();
             _mockWinnerSelector = new Mock<IWinnerSelector>();
             _mockCardPackGenerator = new Mock<ICardPackGenerator<Card, Suit, Rank>>();
+            _mockTranslationVault = new Mock<ITranslationVault>();
+            _mockUserSettings = new Mock<IUserSettings>();
 
             // Initialize GameEngine with mocked dependencies
             _gameEngine = new GameEngine(
                 _mockLoader.Object,
                 _mockWinnerSelector.Object,
                 _mockCardPackGenerator.Object,
+                _mockTranslationVault.Object,
+                _mockUserSettings.Object,
                 2
             );
         }

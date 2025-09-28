@@ -1,8 +1,12 @@
 ﻿using SnapGameSimulator.CardType;
 using SnapGameSimulator.Domain.CardPackGenerator;
 using SnapGameSimulator.Domain.Loader;
+using SnapGameSimulator.Domain.Localization;
 using SnapGameSimulator.Domain.WinnerSelector;
+using SnapGameSimulator.Extension;
+using SnapGameSimulator.Helper;
 using SnapGameSimulator.Models;
+using SnapGameSimulator.Settings;
 
 namespace SnapGameSimulator.Domain;
 
@@ -13,22 +17,27 @@ public sealed class GameEngine
 {
     private readonly IWinnerSelector _winnerSelector;
     private readonly ICardPackGenerator<Card, Suit, Rank> _cardPackGenerator;
+    private readonly ITranslationVault _translationVault;
     private List<PlayerDetail> _playerDetail;
     private ulong _packLimit;
     private readonly ILoader _loader;
     private readonly int _playersCount;
+    private readonly IUserSettings _userSettings;
     private const int doublePack = 2;
     private const int ThriplePacks = 3;
+
     /// <summary>
     /// Initializes a new instance of the GameEngine class.
     /// </summary>
-    public GameEngine(ILoader loader, IWinnerSelector winnerSelector, ICardPackGenerator<Card, Suit, Rank> cardPackGenerator,  int playersCount)
+    public GameEngine(ILoader loader, IWinnerSelector winnerSelector, ICardPackGenerator<Card, Suit, Rank> cardPackGenerator, ITranslationVault translationVault, IUserSettings userSettings, int playersCount)
     {
-         _playerDetail = [];
-         _winnerSelector = winnerSelector;
-         _cardPackGenerator = cardPackGenerator;
-         _loader = loader;
-         _playersCount = playersCount;
+        _playerDetail = [];
+        _winnerSelector = winnerSelector;
+        _cardPackGenerator = cardPackGenerator;
+        _loader = loader;
+        _translationVault = translationVault;
+        _userSettings = userSettings;
+        _playersCount = playersCount;
     }
 
     /// <summary>
@@ -55,7 +64,7 @@ public sealed class GameEngine
 
         DisplayResults(pile);
         var result = await _winnerSelector.SelectWinner(_playerDetail).ConfigureAwait(false);
-        Console.WriteLine(result);
+        result.PrintMessage();
     }
 
     private void HandleMultiplePacks(Stack<Card> pile)
@@ -90,23 +99,21 @@ public sealed class GameEngine
 
     private void LoadGameSettings()
     {
-        Console.Write("Welcome to snap game.\nLoading...\n");
+        var message = _translationVault.GetMessage(MessageKey.WelcomeMessage, _userSettings.GetUserPreferredLanguage());
+        message.PrintMessage();
         _packLimit = _loader.GetPackLimit();
-        Console.WriteLine($"Number of players {_playersCount}");
+        var totalPlayers = _translationVault.GetMessage(MessageKey.TotalPlayers, _userSettings.GetUserPreferredLanguage());
+        GameEngineHelper.ShowPlayersCount(totalPlayers, _playersCount);
         _playerDetail = _loader.LoadPlayers(_playersCount);
     }
 
     private void DisplayResults(Stack<Card> pile)
     {
-        if (pile.Count > 0)
-        {
-            Console.WriteLine($"Discarded cards count {pile.Count}");
-        }
+        var discarPile = _translationVault.GetMessage(MessageKey.DiscardedMessage, _userSettings.GetUserPreferredLanguage());
+        GameEngineHelper.DisplayDiscardedPile(discarPile, pile.Count);
 
-        foreach (var player in _playerDetail)
-        {
-            Console.WriteLine($"Total number of cards {player.Name} has won {player.Cards.Count} ");
-        }
+        var displayResult = _translationVault.GetMessage(MessageKey.Result, _userSettings.GetUserPreferredLanguage());
+        GameEngineHelper.DisplayPlayerResults(displayResult, _playerDetail);
     }
 
     private void CardsMovement(Stack<Card> pile, List<Card> cards)
@@ -119,6 +126,7 @@ public sealed class GameEngine
             foreach (var playerDetail in _playerDetail.Where(_ => i < cards.Count))
             {
                 Console.WriteLine($"{playerDetail.Name} Turn.Count: {playerDetail.Cards.Count} cards");
+                Thread.Sleep(900);
                 playerBucket.Add(playerDetail.Name);
                 var currentCard = cards[i];
                 Console.WriteLine($"Card {cards[i]} on the pile...");
@@ -126,6 +134,7 @@ public sealed class GameEngine
                 if (MatchingCards(lastCard, currentCard))
                 {
                     ProcessPile(pile, playerBucket);
+                    Thread.Sleep(900);
                     i++;
                     lastCard = null;
                     continue;
@@ -141,11 +150,13 @@ public sealed class GameEngine
 
     public void ProcessPile(Stack<Card> pile, List<string> playerBucket)
     {
-        var winner = PileWinner(playerBucket);
-        Console.WriteLine($"Snap! {winner} wins the pile!");
+        var winner = PileWinnerHelper.Selection(playerBucket);
+        var snapMessage = _translationVault.GetMessage(MessageKey.PileWinner, _userSettings.GetUserPreferredLanguage());
+        $"{snapMessage} {winner}".PrintMessage();
         var player = _playerDetail.First(p => p.Name == winner);
         CollectPile(player.Cards, pile);
-        Console.WriteLine($"{winner} now has {player.Cards.Count} cards.");
+        var totalCards = _translationVault.GetMessage(MessageKey.TotalCards, _userSettings.GetUserPreferredLanguage());
+        $"{winner} - {totalCards} {player.Cards.Count}".PrintMessage();
     }
 
     private static bool MatchingCards(Card? lastCard, Card currentCard)
@@ -153,13 +164,6 @@ public sealed class GameEngine
         return lastCard != null && (currentCard.Rank == lastCard.Rank || currentCard.Suit == lastCard.Suit);
     }
 
-    private static string PileWinner(List<string> playerBucket)
-    {
-        // Randomly select a player from the playerBucket
-        var random = new Random();
-        return playerBucket[random.Next(0,playerBucket.Count)];
-    }
-    
     private static void CollectPile(Queue<Card> playerDeck, Stack<Card> pile)
     {
         while (pile.Count > 0)
@@ -167,4 +171,5 @@ public sealed class GameEngine
             playerDeck.Enqueue(pile.Pop());
         }
     }
+   
 }

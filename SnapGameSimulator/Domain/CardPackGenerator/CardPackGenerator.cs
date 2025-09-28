@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace SnapGameSimulator.Domain.CardPackGenerator
 {
+    /// <inheritdoc/>
     public class CardPackGenerator<TObject, TEnumSuit, TEnumRank> : ICardPackGenerator<TObject, TEnumSuit, TEnumRank>
          where TObject : class
          where TEnumSuit : struct, Enum
@@ -11,22 +12,14 @@ namespace SnapGameSimulator.Domain.CardPackGenerator
         private const int MinimumPacks = 1;
         private const int MaximumPacks = int.MaxValue;
 
-        /// <summary>
-        /// Generates and returns a shuffled list of card objects based on the specified number of packs.
-        /// </summary>
-        /// <param name="numberOfPacks">number of packs of cards</param>
-        /// <param name="cardType">Type of cards</param>
-        /// <returns>Returns the shuffled cards</returns>
-        /// <exception cref="ArgumentException">Throws an exception</exception>
+        /// <inheritdoc/>
         public List<TObject> GetCardsPack([Range(MinimumPacks, MaximumPacks, ErrorMessage = "")] int numberOfPacks, Func<TEnumSuit, TEnumRank, TObject> cardType)
         {
             if (numberOfPacks < MinimumPacks)
                 throw new ArgumentException($"Number of packs must be at least {MinimumPacks}.", nameof(numberOfPacks));
 
-            // Use ConcurrentBag for thread-safe collection
             var allCards = new ConcurrentBag<TObject>();
 
-            // Generate card packs in parallel
             Parallel.For(0, numberOfPacks, _ =>
             {
                 var generatedCards = GenerateCards(cardType);
@@ -36,7 +29,6 @@ namespace SnapGameSimulator.Domain.CardPackGenerator
                 }
             });
 
-            // Convert ConcurrentBag to List and shuffle the cards
             var allCardsList = allCards.ToList();
             Shuffle(allCardsList);
             return allCardsList;
@@ -54,7 +46,6 @@ namespace SnapGameSimulator.Domain.CardPackGenerator
 
         private static List<TObject> GenerateCards(Func<TEnumSuit, TEnumRank, TObject> cardPackType)
         {
-            // Use LINQ to generate objects
             return (from suit in Enum.GetValues<TEnumSuit>()
                     from rank in Enum.GetValues<TEnumRank>()
                     select cardPackType(suit, rank)).ToList();
